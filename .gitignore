@@ -17,6 +17,10 @@ build/
 *.swp
 *.swo
 
+# Kiro-specific files (not part of the project)
+.kiro/
+.hypothesis/
+
 # Snowflake credentials
 .snowflake/
 snowflake_credentials.json

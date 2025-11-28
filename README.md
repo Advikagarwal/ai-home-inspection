@@ -31,7 +31,7 @@ This system leverages Snowflake's Cortex AI capabilities to:
 
 ```
 .
-├── .kiro/specs/ai-home-inspection/  # Specification documents
+├── docs/                             # Documentation
 │   ├── requirements.md               # User stories and acceptance criteria
 │   ├── design.md                     # Architecture and design
 │   └── tasks.md                      # Implementation task list
@@ -100,7 +100,7 @@ pytest -k "property"
 
 ## Implementation Status
 
-This project follows a spec-driven development approach. See `.kiro/specs/ai-home-inspection/tasks.md` for the complete implementation plan and current progress.
+This project follows a spec-driven development approach. See `docs/tasks.md` for the complete implementation plan and current progress.
 
 ## AI for Good Impact
 
@@ -112,14 +112,14 @@ This solution empowers stakeholders to catch safety issues early:
 
 ## Documentation
 
-- [Requirements](/.kiro/specs/ai-home-inspection/requirements.md) - User stories and acceptance criteria
-- [Design](/.kiro/specs/ai-home-inspection/design.md) - Architecture and technical design
-- [Tasks](/.kiro/specs/ai-home-inspection/tasks.md) - Implementation plan
+- [Requirements](/docs/requirements.md) - User stories and acceptance criteria
+- [Design](/docs/design.md) - Architecture and technical design
+- [Tasks](/docs/tasks.md) - Implementation plan
 
 ## Contributing
 
 This project uses property-based testing to ensure correctness. When contributing:
-1. Follow the task list in `tasks.md`
+1. Follow the task list in `docs/tasks.md`
 2. Write property-based tests for universal properties
 3. Write unit tests for specific examples and edge cases
 4. Ensure all tests pass before submitting
