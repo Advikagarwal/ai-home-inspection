@@ -1,0 +1,37 @@
+{
+  "environment": "development",
+  "database": {
+    "account": "dev-account.snowflakecomputing.com",
+    "user": "dev_user",
+    "password": "REPLACE_WITH_DEV_PASSWORD",
+    "warehouse": "DEV_WH",
+    "database": "HOME_INSPECTION_DEV",
+    "schema": "PUBLIC",
+    "role": "DEV_ROLE"
+  },
+  "cortex_ai": {
+    "enabled": false,
+    "timeout_seconds": 30,
+    "retry_count": 3,
+    "fallback_enabled": true
+  },
+  "monitoring": {
+    "metrics_enabled": true,
+    "log_level": "DEBUG",
+    "alert_email": null,
+    "alert_webhook": null
+  },
+  "performance": {
+    "batch_size": 10,
+    "max_workers": 2,
+    "cache_ttl_seconds": 60,
+    "connection_pool_size": 2
+  },
+  "features": {
+    "enable_image_classification": true,
+    "enable_text_classification": true,
+    "enable_summary_generation": true,
+    "enable_export": true,
+    "enable_materialized_views": false
+  }
+}

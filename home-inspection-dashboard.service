@@ -1,0 +1,47 @@
+[Unit]
+Description=AI-Assisted Home Inspection Dashboard
+Documentation=https://github.com/your-username/ai-home-inspection
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dashboard
+Group=dashboard
+WorkingDirectory=/opt/home-inspection
+Environment=ENVIRONMENT=production
+Environment=CONFIG_FILE=config/production.json
+Environment=SNOWFLAKE_ACCOUNT=qhvspfi-gx24863
+Environment=SNOWFLAKE_USER=KUKUU81
+Environment=SNOWFLAKE_PASSWORD=uZDPZHd2XibLK7h
+Environment=SNOWFLAKE_WAREHOUSE=COMPUTE_WH
+Environment=SNOWFLAKE_DATABASE=HOME_INSPECTION_DB
+Environment=SNOWFLAKE_SCHEMA=PUBLIC
+Environment=SNOWFLAKE_ROLE=ACCOUNTADMIN
+
+ExecStart=/opt/home-inspection/venv/bin/streamlit run src/dashboard_app.py --server.port=8501 --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=true
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/home-inspection/logs /opt/home-inspection/exports
+
+# Resource limits
+MemoryMax=2G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=home-inspection-dashboard
+
+[Install]
+WantedBy=multi-user.target

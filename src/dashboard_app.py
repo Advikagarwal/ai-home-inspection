@@ -8,8 +8,23 @@ import os
 from typing import Optional, Dict, Any
 from datetime import datetime
 
+# Add src to path for imports
+import sys
+import os
+sys.path.append(os.path.dirname(__file__))
+
 # Import data access layer
-from src.dashboard_data import DashboardData
+from dashboard_data import DashboardData
+
+# Import performance monitoring modules
+try:
+    from performance_monitor import get_performance_monitor
+    from cache_manager import get_cache_manager
+    from query_optimizer import get_query_optimizer
+    from apm_monitor import get_apm_monitor
+    PERFORMANCE_MONITORING_AVAILABLE = True
+except ImportError:
+    PERFORMANCE_MONITORING_AVAILABLE = False
 
 
 def sanitize_error_message(error: Exception) -> str:
@@ -265,6 +280,322 @@ def display_room_details(room: Dict[str, Any]):
             st.divider()
 
 
+def get_snowflake_connection():
+    """
+    Establish Snowflake connection using Streamlit secrets or environment variables
+    
+    Returns:
+        Snowflake connection object or None if connection fails
+    """
+    try:
+        # Try using Streamlit's native connection (Streamlit >= 1.28)
+        try:
+            conn = st.connection("snowflake", type="snowflake")
+            return conn
+        except Exception:
+            pass
+        
+        # Fallback to snowflake-connector-python
+        import snowflake.connector
+        
+        # Try to get credentials from Streamlit secrets
+        if hasattr(st, 'secrets') and 'connections' in st.secrets and 'snowflake' in st.secrets['connections']:
+            config = st.secrets['connections']['snowflake']
+            
+            conn_params = {
+                'account': config['account'],
+                'user': config['user'],
+                'warehouse': config.get('warehouse'),
+                'database': config.get('database'),
+                'schema': config.get('schema', 'PUBLIC'),
+            }
+            
+            # Add password or authenticator
+            if 'password' in config:
+                conn_params['password'] = config['password']
+            elif 'authenticator' in config:
+                conn_params['authenticator'] = config['authenticator']
+            
+            # Add optional parameters
+            if 'role' in config:
+                conn_params['role'] = config['role']
+            
+            conn = snowflake.connector.connect(**conn_params)
+            return conn
+        
+        # Try environment variables as fallback
+        conn_params = {
+            'account': os.getenv('SNOWFLAKE_ACCOUNT'),
+            'user': os.getenv('SNOWFLAKE_USER'),
+            'password': os.getenv('SNOWFLAKE_PASSWORD'),
+            'warehouse': os.getenv('SNOWFLAKE_WAREHOUSE'),
+            'database': os.getenv('SNOWFLAKE_DATABASE', 'HOME_INSPECTION_DB'),
+            'schema': os.getenv('SNOWFLAKE_SCHEMA', 'PUBLIC'),
+        }
+        
+        # Check if we have minimum required parameters
+        if all([conn_params['account'], conn_params['user'], conn_params['password']]):
+            if 'role' in os.environ:
+                conn_params['role'] = os.getenv('SNOWFLAKE_ROLE')
+            
+            conn = snowflake.connector.connect(**conn_params)
+            return conn
+        
+        return None
+        
+    except Exception as e:
+        st.error(f"Connection error: {sanitize_error_message(e)}")
+        return None
+
+
+def show_connection_instructions():
+    """Display instructions for setting up Snowflake connection"""
+    st.warning("⚠️ Snowflake connection not configured")
+    
+    st.markdown("""
+    ### Setup Instructions
+    
+    Choose one of the following methods to connect to Snowflake:
+    
+    #### Option 1: Streamlit Secrets (Recommended for Streamlit Cloud)
+    
+    1. Create a file `.streamlit/secrets.toml` in your project root
+    2. Add your Snowflake credentials:
+    
+    ```toml
+    [connections.snowflake]
+    account = "your-account-identifier"
+    user = "your-username"
+    password = "your-password"
+    warehouse = "COMPUTE_WH"
+    database = "HOME_INSPECTION_DB"
+    schema = "PUBLIC"
+    ```
+    
+    #### Option 2: Environment Variables
+    
+    Set the following environment variables:
+    
+    ```bash
+    export SNOWFLAKE_ACCOUNT="your-account-identifier"
+    export SNOWFLAKE_USER="your-username"
+    export SNOWFLAKE_PASSWORD="your-password"
+    export SNOWFLAKE_WAREHOUSE="COMPUTE_WH"
+    export SNOWFLAKE_DATABASE="HOME_INSPECTION_DB"
+    export SNOWFLAKE_SCHEMA="PUBLIC"
+    ```
+    
+    #### Option 3: SSO Authentication
+    
+    For SSO/browser-based authentication, use:
+    
+    ```toml
+    [connections.snowflake]
+    account = "your-account-identifier"
+    user = "your-username"
+    authenticator = "externalbrowser"
+    warehouse = "COMPUTE_WH"
+    database = "HOME_INSPECTION_DB"
+    schema = "PUBLIC"
+    ```
+    """)
+    
+    st.info("📝 See `.streamlit/secrets.toml.example` for a template")
+    
+    # Show example UI structure
+    with st.expander("Preview Dashboard Features"):
+        st.markdown("""
+        - **Property List View**: Browse all inspected properties with risk indicators
+        - **Filtering**: Filter by risk level, defect type, or search terms
+        - **Property Details**: View complete inspection data including rooms and findings
+        - **Image Annotations**: See detected defects overlaid on inspection images
+        - **Plain-Language Summaries**: AI-generated summaries of inspection results
+        - **Export**: Download reports as PDF or CSV
+        """)
+
+
+def display_performance_monitor():
+    """Display performance monitoring dashboard"""
+    if not PERFORMANCE_MONITORING_AVAILABLE:
+        st.error("Performance monitoring modules not available")
+        return
+    
+    st.header("📊 Performance Monitor")
+    
+    # Get monitoring instances
+    try:
+        apm_monitor = get_apm_monitor()
+        performance_monitor = get_performance_monitor()
+        cache_manager = get_cache_manager()
+        query_optimizer = get_query_optimizer()
+    except Exception as e:
+        st.error(f"Failed to initialize monitoring: {sanitize_error_message(e)}")
+        return
+    
+    # Get dashboard status
+    try:
+        status = apm_monitor.get_dashboard_status()
+    except Exception as e:
+        st.error(f"Failed to get status: {sanitize_error_message(e)}")
+        return
+    
+    # Overall status
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        status_color = {"healthy": "🟢", "warning": "🟡", "critical": "🔴"}
+        st.metric(
+            "System Status", 
+            f"{status_color.get(status['overall_status'], '⚪')} {status['overall_status'].title()}"
+        )
+    
+    with col2:
+        uptime_hours = status['uptime_seconds'] / 3600
+        st.metric("Uptime", f"{uptime_hours:.1f} hours")
+    
+    with col3:
+        cache_hit_rate = status['cache']['hit_rate']
+        st.metric("Cache Hit Rate", f"{cache_hit_rate:.1%}")
+    
+    with col4:
+        avg_response = status['performance']['avg_duration']
+        st.metric("Avg Response Time", f"{avg_response:.2f}s")
+    
+    # Tabs for different monitoring views
+    tab1, tab2, tab3, tab4 = st.tabs(["System Metrics", "Query Performance", "Health Checks", "Alerts"])
+    
+    with tab1:
+        st.subheader("System Resource Usage")
+        
+        # System metrics
+        sys_metrics = status['system_metrics']
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("CPU Usage", f"{sys_metrics['cpu_percent']:.1f}%")
+        with col2:
+            st.metric("Memory Usage", f"{sys_metrics['memory_percent']:.1f}%")
+        with col3:
+            st.metric("Disk Usage", f"{sys_metrics['disk_percent']:.1f}%")
+        
+        # Resource usage bars
+        import plotly.graph_objects as go
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            name='Usage %',
+            x=['CPU', 'Memory', 'Disk'],
+            y=[sys_metrics['cpu_percent'], sys_metrics['memory_percent'], sys_metrics['disk_percent']],
+            marker_color=['red' if x > 80 else 'orange' if x > 60 else 'green' 
+                         for x in [sys_metrics['cpu_percent'], sys_metrics['memory_percent'], sys_metrics['disk_percent']]]
+        ))
+        fig.update_layout(title="Resource Usage", yaxis_title="Percentage")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with tab2:
+        st.subheader("Query Performance Analysis")
+        
+        perf_data = status['performance']
+        
+        # Performance metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Queries", perf_data['total_queries'])
+        with col2:
+            st.metric("Success Rate", f"{perf_data['success_rate']:.1%}")
+        with col3:
+            st.metric("Avg Duration", f"{perf_data['avg_duration']:.2f}s")
+        
+        # Query types performance
+        if perf_data['query_types']:
+            st.subheader("Performance by Query Type")
+            
+            query_types_df = pd.DataFrame([
+                {
+                    'Query Type': qtype,
+                    'Count': stats['count'],
+                    'Avg Duration (s)': stats['avg_duration'],
+                    'Max Duration (s)': stats['max_duration']
+                }
+                for qtype, stats in perf_data['query_types'].items()
+            ])
+            
+            st.dataframe(query_types_df, use_container_width=True)
+        
+        # Slowest queries
+        if perf_data['slowest_queries']:
+            st.subheader("Slowest Queries")
+            
+            slowest_df = pd.DataFrame(perf_data['slowest_queries'])
+            st.dataframe(slowest_df, use_container_width=True)
+    
+    with tab3:
+        st.subheader("Health Check Results")
+        
+        health_checks = status['health_checks']
+        
+        for component, result in health_checks.items():
+            status_icon = {"healthy": "✅", "warning": "⚠️", "critical": "❌"}
+            
+            with st.expander(f"{status_icon.get(result['status'], '❓')} {component.title()}"):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**Status:** {result['status'].title()}")
+                    st.write(f"**Message:** {result['message']}")
+                with col2:
+                    st.write(f"**Response Time:** {result['response_time_ms']:.1f}ms")
+                    st.write(f"**Last Check:** {result['timestamp']}")
+                
+                if result.get('details'):
+                    st.json(result['details'])
+    
+    with tab4:
+        st.subheader("Active Alerts")
+        
+        active_alerts = status['active_alerts']
+        
+        if not active_alerts:
+            st.success("No active alerts")
+        else:
+            for alert in active_alerts:
+                severity_color = {"critical": "🔴", "warning": "🟡", "info": "🔵"}
+                
+                st.error(f"{severity_color.get(alert['severity'], '⚪')} **{alert['component'].title()}**: {alert['message']}")
+                
+                if 'value' in alert and 'threshold' in alert:
+                    st.write(f"Current: {alert['value']}, Threshold: {alert['threshold']}")
+    
+    # Performance insights and recommendations
+    st.header("🎯 Optimization Recommendations")
+    
+    try:
+        insights = query_optimizer.get_query_performance_insights()
+        recommendations = insights.get('optimization_recommendations', [])
+        
+        if not recommendations:
+            st.success("No optimization recommendations at this time")
+        else:
+            for rec in recommendations:
+                priority_color = {"high": "🔴", "medium": "🟡", "low": "🟢"}
+                
+                with st.expander(f"{priority_color.get(rec['priority'], '⚪')} {rec['title']}"):
+                    st.write(f"**Priority:** {rec['priority'].title()}")
+                    st.write(f"**Description:** {rec['description']}")
+                    st.write(f"**Recommended Action:** {rec['action']}")
+    
+    except Exception as e:
+        st.error(f"Failed to get recommendations: {sanitize_error_message(e)}")
+    
+    # Auto-refresh
+    if st.button("🔄 Refresh Metrics"):
+        st.rerun()
+    
+    # Auto-refresh every 30 seconds
+    import time
+    time.sleep(30)
+    st.rerun()
+
+
 def main():
     """Main Streamlit application"""
     
@@ -272,51 +603,40 @@ def main():
     st.set_page_config(
         page_title="AI Home Inspection Dashboard",
         page_icon="🏠",
-        layout="wide"
+        layout="wide",
+        initial_sidebar_state="expanded"
     )
     
     st.title("🏠 AI-Assisted Home Inspection Dashboard")
+    st.caption("Powered by Snowflake Cortex AI")
     
     # Initialize session state
     if 'selected_property' not in st.session_state:
         st.session_state['selected_property'] = None
+    if 'current_page' not in st.session_state:
+        st.session_state['current_page'] = 'Properties'
     
-    # Get Snowflake connection (would be configured via secrets or environment)
-    # For now, this is a placeholder - actual implementation would use st.connection
-    try:
-        # This would be replaced with actual Snowflake connection
-        # conn = st.connection("snowflake")
-        # For testing purposes, we'll need to handle this gracefully
-        
-        # Placeholder for connection - in production this would be:
-        # import snowflake.connector
-        # conn = snowflake.connector.connect(...)
-        
-        st.warning("⚠️ Snowflake connection not configured. Please set up connection in Streamlit secrets.")
-        st.info("To configure: Add Snowflake credentials to `.streamlit/secrets.toml`")
-        
-        # For demo purposes, show the UI structure without live data
-        conn = None
-        
-    except Exception as e:
-        error_msg = sanitize_error_message(e)
-        st.error(f"❌ Connection Error: {error_msg}")
-        st.stop()
+    # Navigation
+    st.sidebar.title("Navigation")
+    pages = ["Properties", "Performance Monitor"] if PERFORMANCE_MONITORING_AVAILABLE else ["Properties"]
+    current_page = st.sidebar.radio("Go to", pages, index=pages.index(st.session_state['current_page']))
+    st.session_state['current_page'] = current_page
+    
+    # Get Snowflake connection
+    conn = get_snowflake_connection()
     
     # Check if we have a valid connection
     if conn is None:
-        st.info("Dashboard UI is ready. Connect to Snowflake to view inspection data.")
-        
-        # Show example UI structure
-        st.subheader("Dashboard Features")
-        st.markdown("""
-        - **Property List View**: Browse all inspected properties with risk indicators
-        - **Filtering**: Filter by risk level, defect type, or search terms
-        - **Property Details**: View complete inspection data including rooms and findings
-        - **Image Annotations**: See detected defects overlaid on inspection images
-        - **Plain-Language Summaries**: AI-generated summaries of inspection results
-        """)
+        show_connection_instructions()
         st.stop()
+    
+    # Connection successful
+    st.success("✅ Connected to Snowflake")
+    
+    # Route to appropriate page
+    if current_page == "Performance Monitor" and PERFORMANCE_MONITORING_AVAILABLE:
+        display_performance_monitor()
+        return
     
     # Initialize dashboard data access
     dashboard = DashboardData(conn)
@@ -376,6 +696,52 @@ def main():
     
     # Display property list
     display_property_list(dashboard, filters)
+    
+    # Export functionality in sidebar
+    st.sidebar.divider()
+    st.sidebar.header("Export")
+    
+    export_format = st.sidebar.selectbox(
+        "Export Format",
+        options=["PDF", "CSV"],
+        index=0
+    )
+    
+    if st.sidebar.button("Export All Properties"):
+        try:
+            from src.export import export_pdf, export_csv
+            
+            # Get all properties (unfiltered)
+            all_properties = dashboard.get_property_list()
+            property_ids = [p['property_id'] for p in all_properties]
+            
+            if not property_ids:
+                st.sidebar.warning("No properties to export")
+            else:
+                with st.spinner(f"Generating {export_format} export..."):
+                    if export_format == "PDF":
+                        # Export first property as PDF (for demo)
+                        pdf_bytes = export_pdf(conn, property_ids[0])
+                        st.sidebar.download_button(
+                            label="Download PDF",
+                            data=pdf_bytes,
+                            file_name=f"inspection_{property_ids[0]}.pdf",
+                            mime="application/pdf"
+                        )
+                    else:  # CSV
+                        csv_bytes = export_csv(conn, property_ids)
+                        st.sidebar.download_button(
+                            label="Download CSV",
+                            data=csv_bytes,
+                            file_name="inspections_export.csv",
+                            mime="text/csv"
+                        )
+                
+                st.sidebar.success(f"✅ {export_format} export ready!")
+        
+        except Exception as e:
+            error_msg = sanitize_error_message(e)
+            st.sidebar.error(f"Export failed: {error_msg}")
 
 
 if __name__ == "__main__":

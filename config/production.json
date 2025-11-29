@@ -1,0 +1,45 @@
+{
+  "environment": "production",
+  "database": {
+    "account": "qhvspfi-gx24863",
+    "user": "KUKUU81",
+    "password": "USE_ENV_VAR_SNOWFLAKE_PASSWORD",
+    "warehouse": "COMPUTE_WH",
+    "database": "HOME_INSPECTION_DB",
+    "schema": "PUBLIC",
+    "role": "ACCOUNTADMIN"
+  },
+  "cortex_ai": {
+    "enabled": true,
+    "timeout_seconds": 30,
+    "retry_count": 3,
+    "fallback_enabled": true
+  },
+  "monitoring": {
+    "metrics_enabled": true,
+    "log_level": "INFO",
+    "alert_email": "prod-alerts@example.com",
+    "alert_webhook": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+    "health_check_interval": 60,
+    "error_threshold": 10,
+    "performance_monitoring": true,
+    "audit_logging": true
+  },
+  "performance": {
+    "batch_size": 100,
+    "max_workers": 8,
+    "cache_ttl_seconds": 600,
+    "connection_pool_size": 10,
+    "query_timeout_seconds": 300,
+    "max_retries": 3,
+    "enable_query_caching": true,
+    "materialized_view_refresh_interval": 3600
+  },
+  "features": {
+    "enable_image_classification": true,
+    "enable_text_classification": true,
+    "enable_summary_generation": true,
+    "enable_export": true,
+    "enable_materialized_views": true
+  }
+}

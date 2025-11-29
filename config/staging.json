@@ -1,0 +1,37 @@
+{
+  "environment": "staging",
+  "database": {
+    "account": "staging-account.snowflakecomputing.com",
+    "user": "staging_user",
+    "password": "REPLACE_WITH_STAGING_PASSWORD",
+    "warehouse": "STAGING_WH",
+    "database": "HOME_INSPECTION_STAGING",
+    "schema": "PUBLIC",
+    "role": "STAGING_ROLE"
+  },
+  "cortex_ai": {
+    "enabled": true,
+    "timeout_seconds": 30,
+    "retry_count": 3,
+    "fallback_enabled": true
+  },
+  "monitoring": {
+    "metrics_enabled": true,
+    "log_level": "INFO",
+    "alert_email": "staging-alerts@example.com",
+    "alert_webhook": null
+  },
+  "performance": {
+    "batch_size": 50,
+    "max_workers": 4,
+    "cache_ttl_seconds": 300,
+    "connection_pool_size": 5
+  },
+  "features": {
+    "enable_image_classification": true,
+    "enable_text_classification": true,
+    "enable_summary_generation": true,
+    "enable_export": true,
+    "enable_materialized_views": true
+  }
+}

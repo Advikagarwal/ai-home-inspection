@@ -47,6 +47,25 @@ This system leverages Snowflake's Cortex AI capabilities to:
 └── requirements.txt                  # Python dependencies
 ```
 
+## Quick Start - Streamlit Dashboard
+
+The fastest way to get started is with the Streamlit dashboard:
+
+```bash
+# 1. Configure Snowflake connection
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+# Edit .streamlit/secrets.toml with your credentials
+
+# 2. Run dashboard (auto-installs dependencies)
+./run_dashboard.sh  # Linux/Mac
+# OR
+run_dashboard.bat   # Windows
+
+# 3. Open browser at http://localhost:8501
+```
+
+**See `STREAMLIT_README.md` for detailed setup instructions.**
+
 ## Getting Started
 
 ### Prerequisites

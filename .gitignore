@@ -33,6 +33,10 @@ secrets/
 config/credentials.json
 config/*.secret
 
+# Streamlit secrets
+.streamlit/secrets.toml
+.streamlit/config.toml
+
 # Testing
 .pytest_cache/
 .coverage
