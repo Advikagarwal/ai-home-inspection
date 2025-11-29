@@ -10,30 +10,62 @@ ENV/
 *.egg-info/
 dist/
 build/
+*.pyc
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-*
 
 # Kiro-specific files (not part of the project)
 .kiro/
 .hypothesis/
+.docs
 
-# Snowflake credentials
+# Snowflake credentials and secrets
 .snowflake/
 snowflake_credentials.json
+*.key
+*.pem
+secrets/
+config/credentials.json
+config/*.secret
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
 
 # OS
 .DS_Store
 Thumbs.db
+*.log
 
 # Environment variables
 .env
-.env.local
+.env.*
+!.env.example
+
+# Data files (don't commit actual inspection data)
+data/
+*.csv
+*.xlsx
+!tests/fixtures/*.csv
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+*~
